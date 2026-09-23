@@ -8,7 +8,23 @@ class PhotoController {
         $this->photoModel = new Photo($pdo);
     }
 
-    // معالجة رفع الصورة
+    // عرض صفحة المعرض العام لجميع الصور
+    public function index() {
+        $photos = $this->photoModel->get();
+        require_once __DIR__ . '/../views/photos/index.php';
+    }
+
+    // عرض تفاصيل صورة محددة
+    public function show($id) {
+        $photo = $this->photoModel->get($id);
+        if (!$photo) {
+            header('Location: /photos');
+            exit;
+        }
+        require_once __DIR__ . '/../views/photos/show.php';
+    }
+
+    // معالجة رفع صورة جديدة
     public function upload() {
         if (!isset($_SESSION['user_id'])) {
             header('Location: /login');
@@ -20,7 +36,7 @@ class PhotoController {
             $desc  = trim($_POST['description'] ?? '');
             $file  = $_FILES['image'];
 
-            // التأكد من رفع ملف بصيغة صورة وتوليد اسم فريد
+            // التحقق من نوع الصورة
             $allowed = ['image/jpeg', 'image/png', 'image/webp'];
             if (in_array($file['type'], $allowed) && $file['error'] === 0) {
                 $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
@@ -29,7 +45,7 @@ class PhotoController {
 
                 if (move_uploaded_file($file['tmp_name'], $target)) {
                     $this->photoModel->create($_SESSION['user_id'], $newName, $title, $desc);
-                    header('Location: /gallery');
+                    header('Location: /photos');
                     exit;
                 }
             }
