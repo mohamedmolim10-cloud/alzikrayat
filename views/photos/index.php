@@ -12,11 +12,16 @@ if (session_status() === PHP_SESSION_NONE) {
     <title>الذكريات - معرض الصور</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         .photo-card img {
             height: 230px;
             object-fit: cover;
             width: 100%;
+            transition: transform 0.3s ease;
+        }
+        .photo-card:hover img {
+            transform: scale(1.03);
         }
         .hero-section {
             background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
@@ -63,7 +68,7 @@ if (session_status() === PHP_SESSION_NONE) {
     </nav>
 
     <!-- الواجهة الترحيبية وقسم About Us -->
-    <header class="hero-section text-center">
+    <header class="hero-section text-center shadow-sm">
         <div class="container">
             <h1 class="fw-bold mb-3">منصة الذكريات (Alzikrayat)</h1>
             <p class="lead text-light col-md-8 mx-auto">
@@ -95,20 +100,24 @@ if (session_status() === PHP_SESSION_NONE) {
             <?php if (!empty($photos)): ?>
                 <?php foreach ($photos as $photo): ?>
                     <div class="grid-item col-lg-4 col-md-6">
-                        <div class="card h-100 shadow-sm photo-card">
-                            <img src="/alzikrayat/public/images/uploads/<?= htmlspecialchars($photo['file_name']) ?>" 
-                                 class="card-img-top" 
-                                 alt="<?= htmlspecialchars($photo['title']) ?>"
-                                 onerror="this.src='https://via.placeholder.com/400x250?text=No+Image';">
+                        <div class="card h-100 shadow-sm photo-card border-0 rounded-3 overflow-hidden">
+                            <div class="overflow-hidden bg-dark text-center" style="max-height: 230px;">
+                                <img src="/alzikrayat/public/images/uploads/<?= htmlspecialchars($photo['file_name']) ?>" 
+                                     class="card-img-top" 
+                                     alt="<?= htmlspecialchars($photo['title']) ?>"
+                                     onerror="this.src='https://via.placeholder.com/400x250?text=No+Image';">
+                            </div>
                             <div class="card-body">
-                                <h5 class="card-title fw-bold"><?= htmlspecialchars($photo['title']) ?></h5>
+                                <h5 class="card-title fw-bold text-dark mb-2"><?= htmlspecialchars($photo['title']) ?></h5>
                                 <p class="card-text text-muted small">
                                     <?= htmlspecialchars(mb_strimwidth($photo['description'] ?? '', 0, 80, '...')) ?>
                                 </p>
                             </div>
-                            <div class="card-footer bg-white border-0 d-flex justify-content-between align-items-center">
-                                <small class="text-secondary"><?= htmlspecialchars(substr($photo['date_time'], 0, 10)) ?></small>
-                                <a href="/alzikrayat/public/photo/<?= $photo['id'] ?>" class="btn btn-sm btn-outline-primary">عرض التفاصيل</a>
+                            <div class="card-footer bg-white border-top-0 d-flex justify-content-between align-items-center pb-3">
+                                <small class="text-secondary"><i class="far fa-clock me-1"></i><?= htmlspecialchars(substr($photo['date_time'], 0, 10)) ?></small>
+                                <a href="/alzikrayat/public/photo/<?= $photo['id'] ?>" class="btn btn-sm btn-outline-primary fw-semibold">
+                                    عرض التفاصيل &larr;
+                                </a>
                             </div>
                         </div>
                     </div>

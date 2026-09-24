@@ -1,79 +1,43 @@
 <?php
-/**
- * متحكم إدارة الصور (PhotoController)
- * مسؤول عن تنسيق استعراض الصور في المعرض وإدارة رفع الصور الجديدة وتخزينها
- * وفق معمارية الـ MVC وبدون استخدام أي مكاتب أو أطر عمل خارجية
- */
-
+// controllers/PhotoController.php
 require_once '../models/Photo.php';
+require_once '../models/Comment.php';
 
 class PhotoController {
-    /**
-     * اتصال قاعدة البيانات PDO
-     * @var PDO
-     */
     private $pdo;
-
-    /**
-     * كائن موديل الصور Photo
-     * @var Photo
-     */
     private $photoModel;
+    private $commentModel;
 
-    /**
-     * دالة البناء وتمرير اتصال قاعدة البيانات
-     * @param PDO $pdo
-     */
     public function __construct($pdo) {
         $this->pdo = $pdo;
         $this->photoModel = new Photo($pdo);
+        $this->commentModel = new Comment($pdo);
     }
 
-    /**
-     * عرض الصفحة الرئيسية لمعرض الصور
-     * تجلب قائمة الصور من قاعدة البيانات وتمررها لواجهة العرض
-     * @return void
-     */
     public function index() {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-
         $photos = $this->photoModel->getAllPhotos();
         require_once '../views/photos/index.php';
     }
 
-    /**
-     * عرض نموذج رفع صورة جديدة
-     * تمنع الوصول للزوار غير المسجلين وتعيد توجيههم لصفحة تسجيل الدخول
-     * @return void
-     */
     public function create() {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-
-        // فحص صلاحية الدخول
         if (!isset($_SESSION['user'])) {
             header('Location: /alzikrayat/public/login');
             exit;
         }
-
         $error = '';
         require_once '../views/photos/create.php';
     }
 
-    /**
-     * معالجة تخزين الصورة ورفع الملف على السيرفر
-     * تتضمن التحقق من الحقول ونوع وامتداد وحجم الملف أمنياً
-     * @return void
-     */
     public function store() {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-
-        // فحص صلاحية الدخول
         if (!isset($_SESSION['user'])) {
             header('Location: /alzikrayat/public/login');
             exit;
@@ -84,54 +48,113 @@ class PhotoController {
         $description = trim($_POST['description'] ?? '');
         $userId = $_SESSION['user']['id'];
 
-        // طبقة التحقق من جهة السيرفر (Server-side validation)
         if (empty($title)) {
             $error = 'يرجى إدخال عنوان للصورة!';
         } elseif (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
-            $error = 'يرجى اختيار ملف صورة صالح أو التأكد من سلامة التحميل!';
+            $error = 'يرجى اختيار ملف صورة صالح!';
         } else {
             $uploadedFile = $_FILES['image'];
             $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
             $fileExtension = strtolower(pathinfo($uploadedFile['name'], PATHINFO_EXTENSION));
 
             if (!in_array($fileExtension, $allowedExtensions)) {
-                $error = 'صيغة الملف غير مدعومة! الصيغ المسموحة: JPG, JPEG, PNG, WEBP.';
+                $error = 'صيغة الملف غير مدعومة!';
             } elseif ($uploadedFile['size'] > 5 * 1024 * 1024) {
-                $error = 'حجم الصورة كبير جداً! الحد الأقصى المسموح هو 5 ميجابايت.';
+                $error = 'حجم الصورة يتجاوز الحد المسموح (5MB)!';
             } else {
-                // توليد اسم ملف فريد وآمن لمنع التعارض وثغرات حقن الأسماء
                 $uniqueFileName = 'photo_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $fileExtension;
                 $targetDirectory = __DIR__ . '/../public/images/uploads/';
 
-                // إنشاء مجلد الرفع في حال لم يكن موجوداً
                 if (!is_dir($targetDirectory)) {
                     mkdir($targetDirectory, 0777, true);
                 }
 
                 $destinationPath = $targetDirectory . $uniqueFileName;
 
-                // نقل الملف من المسار المؤقت إلى مجلد التخزين الفعلي
                 if (move_uploaded_file($uploadedFile['tmp_name'], $destinationPath)) {
-                    // حفظ البيانات الوصفية للصورة في قاعدة البيانات
-                    $isSaved = $this->photoModel->create($userId, $uniqueFileName, $title, $description);
-
-                    if ($isSaved) {
+                    if ($this->photoModel->create($userId, $uniqueFileName, $title, $description)) {
                         header('Location: /alzikrayat/public/photos');
                         exit;
                     } else {
-                        // حذف الصورة من القرص إذا فشل الحفظ في قاعدة البيانات
-                        if (file_exists($destinationPath)) {
-                            unlink($destinationPath);
-                        }
-                        $error = 'حدث خطأ أثناء حفظ معلومات الصورة في قاعدة البيانات!';
+                        if (file_exists($destinationPath)) unlink($destinationPath);
+                        $error = 'حدث خطأ أثناء حفظ الصورة في قاعدة البيانات!';
                     }
                 } else {
-                    $error = 'فشل حفظ الملف على السيرفر! تأكد من صلاحيات المجلد.';
+                    $error = 'فشل نقل الصورة لمجلد التخزين!';
                 }
             }
         }
-
-        // في حال وجود أي خطأ، إعادة عرض النموذج مع رسالة التنبيه
         require_once '../views/photos/create.php';
+    }
+
+    /**
+     * عرض تفاصيل الصورة والتعليقات
+     */
+    public function show($id) {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $photo = $this->photoModel->findById($id);
+        if (!$photo) {
+            header('Location: /alzikrayat/public/photos');
+            exit;
+        }
+
+        $comments = $this->commentModel->getByPhotoId($id);
+        require_once '../views/photos/show.php';
+    }
+
+    /**
+     * حفظ تعليق جديد على الصورة
+     */
+    public function addComment($photoId) {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (!isset($_SESSION['user'])) {
+            header('Location: /alzikrayat/public/login');
+            exit;
+        }
+
+        $commentText = trim($_POST['comment'] ?? '');
+        if (!empty($commentText)) {
+            $this->commentModel->addComment($photoId, $_SESSION['user']['id'], $commentText);
+        }
+
+        header("Location: /alzikrayat/public/photo/{$photoId}");
+        exit;
+    }
+
+    /**
+     * حذف الصورة مع فحص ملكية المستخدم الصارم
+     */
+    public function delete($id) {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (!isset($_SESSION['user'])) {
+            header('Location: /alzikrayat/public/login');
+            exit;
+        }
+
+        $photo = $this->photoModel->findById($id);
+
+        // التحقق من وجود الصورة ومن أنها تخص المستخدم الحالي حصراً
+        if ($photo && (int)$photo['user_id'] === (int)$_SESSION['user']['id']) {
+            // حذف الملف الفعلي من القرص
+            $filePath = __DIR__ . '/../public/images/uploads/' . $photo['file_name'];
+            if (file_exists($filePath)) {
+                unlink($filePath);
+            }
+
+            // حذف السجل من قاعدة البيانات (ستُحذف التعليقات تلقائياً عبر Cascade Delete)
+            $this->photoModel->delete($id);
+        }
+
+        header('Location: /alzikrayat/public/photos');
+        exit;
     }
 }
