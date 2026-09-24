@@ -1,4 +1,5 @@
 <?php
+// controllers/AuthController.php
 require_once '../models/User.php';
 
 class AuthController {
@@ -69,20 +70,23 @@ class AuthController {
 
             // التحقق من تطابق كلمة المرور المشفرة
             if ($user && password_verify($password, $user['password'])) {
+                // ضبط بيانات الجلسة بالهيكل المتوافق مع الـ Navbar
+                $_SESSION['user'] = [
+                    'id'         => $user['id'],
+                    'first_name' => $user['first_name'],
+                    'last_name'  => $user['last_name'],
+                    'email'      => $user['email']
+                ];
+                
+                // توافق إضافي مع أي مراجع قديمة
                 $_SESSION['user_id']   = $user['id'];
                 $_SESSION['user_name'] = $user['first_name'] . ' ' . $user['last_name'];
+
                 // حفظ تاريخ وتوقيت آخر تسجيل دخول في الكوكي لمدة 7 أيام
-            setcookie('last_login', date('Y-m-d H:i:s'), time() + (7 * 24 * 60 * 60), "/");
-                
-                echo "
-                <div style='font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 80vh; background-color: #f8fafc; margin: 0;'>
-                    <div style='background: white; padding: 40px 60px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center; border-top: 5px solid #0d6efd;'>
-                        <h1 style='color: #1e293b; margin-bottom: 10px; font-size: 28px;'>Welcome, " . htmlspecialchars($user['first_name']) . "! 👋</h1>
-                        <p style='color: #64748b; font-size: 16px; margin-bottom: 20px;'>تم تسجيل دخولك إلى معرض الذكريات بنجاح.</p>
-                        <a href='/alzikrayat/public/logout' style='display: inline-block; padding: 10px 20px; background-color: #dc3545; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;'>تسجيل الخروج</a>
-                    </div>
-                </div>
-                ";
+                setcookie('last_login', date('Y-m-d H:i:s'), time() + (7 * 24 * 60 * 60), "/");
+
+                // التوجيه التلقائي المباشر إلى المعرض
+                header('Location: /alzikrayat/public/photos');
                 exit;
             } else {
                 $error = "بيانات الدخول غير صحيحة!";
