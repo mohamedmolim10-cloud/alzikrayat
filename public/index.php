@@ -15,5 +15,7 @@ $router->add('GET', '/logout', ['AuthController', 'logout']);
 $router->add('GET', '/', ['PhotoController', 'index']);
 $router->add('GET', '/photos', ['PhotoController', 'index']);
 $router->add('GET', '/photo/{id}', ['PhotoController', 'show']);
+$router->add('GET', '/upload', ['PhotoController', 'create']);
+$router->add('POST', '/upload', ['PhotoController', 'store']);
 // تشغيل الموجه
 $router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI'], $pdo);
