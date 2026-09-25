@@ -33,6 +33,6 @@ class Comment {
             ':photo_id' => $photoId,
             ':user_id'  => $userId,
             ':comment'  => $commentText
-        ]);
+        ]);  
     }
 }
